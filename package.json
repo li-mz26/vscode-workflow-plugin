@@ -1,0 +1,92 @@
+{
+  "name": "vscode-workflow-plugin",
+  "displayName": "Workflow Visual Editor",
+  "description": "A VSCode extension for visual workflow orchestration similar to n8n, with AI-powered agent support",
+  "version": "0.0.1",
+  "publisher": "workflow-plugin",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onCommand:workflow.open",
+    "onCommand:workflow.create",
+    "onView:workflow-sidebar"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "workflow.open",
+        "title": "Open Workflow Folder"
+      },
+      {
+        "command": "workflow.create",
+        "title": "Create New Workflow"
+      },
+      {
+        "command": "workflow.run",
+        "title": "Run Workflow"
+      },
+      {
+        "command": "workflow.stop",
+        "title": "Stop Workflow"
+      },
+      {
+        "command": "workflow.startMCP",
+        "title": "Start MCP Server"
+      },
+      {
+        "command": "workflow.stopMCP",
+        "title": "Stop MCP Server"
+      },
+      {
+        "command": "workflow.agentChat",
+        "title": "Open Agent Chat"
+      }
+    ],
+    "views": {
+      "workflow-sidebar": [
+        {
+          "id": "workflow-explorer",
+          "name": "Workflow Explorer"
+        },
+        {
+          "id": "node-library",
+          "name": "Node Library"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "bottom": [
+        {
+          "id": "workflow-agent",
+          "title": "Workflow Agent",
+          "icon": "$(bot)"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "node ./out/test/runTest.js",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^10.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.3.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "uuid": "^9.0.0"
+  }
+}

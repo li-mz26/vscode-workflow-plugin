@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Editor</title>
+    <style>
+        :root {
+            --primary: #6366F1;
+            --secondary: #8B5CF6;
+            --accent: #10B981;
+            --bg: #1E1E2E;
+            --surface: #2D2D3F;
+            --text: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --border: #3D3D5C;
+            --error: #EF4444;
+            --success: #22C55E;
+            --warning: #F59E0B;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .toolbar-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 200ms;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5558E3;
+        }
+
+        .btn-secondary {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: #4D4D6C;
+        }
+
+        .btn-icon {
+            padding: 8px;
+            background: transparent;
+            border: 1px solid var(--border);
+        }
+
+        /* Main content */
+        .main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Canvas */
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-color: var(--bg);
+        }
+
+        .canvas.dragging {
+            cursor: grabbing;
+        }
+
+        /* Nodes */
+        .node {
+            position: absolute;
+            min-width: 180px;
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: move;
+            user-select: none;
+            transition: transform 150ms, box-shadow 150ms;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .node:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .node.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+        }
+
+        .node.trigger {
+            border-color: var(--accent);
+        }
+
+        .node.action {
+            border-color: var(--primary);
+        }
+
+        .node.logic {
+            border-color: var(--warning);
+        }
+
+        .node.ai {
+            border-color: var(--secondary);
+        }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .node-icon {
+            font-size: 18px;
+        }
+
+        .node-name {
+            font-size: 14px;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .node-type {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .node-ports {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+
+        .port {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border);
+            cursor: crosshair;
+        }
+
+        .port:hover {
+            background: var(--primary);
+        }
+
+        .port.input {
+            margin-left: -6px;
+        }
+
+        .port.output {
+            margin-right: -6px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .node-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .node-item {
+            padding: 10px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: grab;
+            transition: all 150ms;
+        }
+
+        .node-item:hover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .node-item-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .node-item-desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Properties panel */
+        .properties {
+            padding: 16px;
+        }
+
+        .property-group {
+            margin-bottom: 16px;
+        }
+
+        .property-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .property-input {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            font-size: 13px;
+        }
+
+        .property-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Status bar */
+        .status-bar {
+            padding: 8px 16px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Empty state */
+        .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--text);
+        }
+
+        .empty-state p {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <span class="toolbar-title">Workflow Editor</span>
+            </div>
+            <div class="toolbar-actions">
+                <button class="btn btn-secondary" id="saveBtn">Save</button>
+                <button class="btn btn-secondary" id="runBtn">Run</button>
+                <button class="btn btn-primary" id="addNodeBtn">+ Add Node</button>
+            </div>
+        </div>
+
+        <div class="main">
+            <div class="canvas-container">
+                <div class="canvas" id="canvas">
+                    <div class="empty-state" id="emptyState">
+                        <h3>No Workflow Open</h3>
+                        <p>Open a workflow folder or create a new one</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="sidebar-header">Node Library</div>
+                <div class="sidebar-content">
+                    <div class="node-list">
+                        <div class="node-item" draggable="true" data-type="trigger.webhook" data-name="Webhook">
+                            <div class="node-item-name">Webhook</div>
+                            <div class="node-item-desc">Receive HTTP requests</div>
+                        </div>
+                        <div class="node-item" draggable="true" data-type="trigger.schedule" data-name="Schedule">
+                            <div class="node-item-name">Schedule</div>
+                            <div class="node-item-desc">Run on schedule</div>
+                        </div>
+                        <div class="node-item" draggable="true" data-type="trigger.manual" data-name="Manual Trigger">
+                            <div class="node-item-name">Manual Trigger</div>
+                            <div class="node-item-desc">Start manually</div>
+                        </div>
+                        <div class="node-item" draggable="true" data-type="action.http" data-name="HTTP Request">
+                            <div class="node-item-name">HTTP Request</div>
+                            <div class="node-item-desc">Make HTTP calls</div>
+                        </div>
+                        <div class="node-item" draggable="true" data-type="action.code" data-name="Code">
+                            <div class="node-item-name">Code</div>
+                            <div class="node-item-desc">Run JavaScript</div>
+                        </div>
+                        <div class="node-item" draggable="true" data-type="logic.if" data-name="IF">
+                            <div class="node-item-name">IF Condition</div>
+                            <div class="node-item-desc">Conditional branch</div>
+                        </div>
+                        <div class="node-item" draggable="true" data-type="logic.switch" data-name="Switch">
+                            <div class="node-item-name">Switch</div>
+                            <div class="node-item-desc">Multi-way branch</div>
+                        </div>
+                        <div class="node-item" draggable="true" data-type="logic.wait" data-name="Wait">
+                            <div class="node-item-name">Wait</div>
+                            <div class="node-item-desc">Wait for duration</div>
+                        </div>
+                        <div class="node-item" draggable="true" data-type="ai.claude" data-name="Claude AI">
+                            <div class="node-item-name">Claude AI</div>
+                            <div class="node-item-desc">Call Claude API</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="properties" id="properties" style="display: none;">
+                    <div class="property-group">
+                        <div class="property-label">Node Name</div>
+                        <input type="text" class="property-input" id="nodeNameInput">
+                    </div>
+                    <div class="property-group">
+                        <div class="property-label">Type</div>
+                        <input type="text" class="property-input" id="nodeTypeInput" readonly>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <span id="statusText">Ready</span>
+            <span>Zoom: 100%</span>
+        </div>
+    </div>
+
+    <script>
+        const vscode = acquireVsCodeApi();
+        let nodes = [];
+        let connections = [];
+        let selectedNode = null;
+        let draggedNodeType = null;
+        let draggedNodeName = null;
+
+        const canvas = document.getElementById('canvas');
+        const emptyState = document.getElementById('emptyState');
+        const propertiesPanel = document.getElementById('properties');
+        const nodeNameInput = document.getElementById('nodeNameInput');
+        const nodeTypeInput = document.getElementById('nodeTypeInput');
+
+        // Node icons
+        const nodeIcons = {
+            'trigger.webhook': '🪝',
+            'trigger.schedule': '⏰',
+            'trigger.manual': '▶️',
+            'trigger.event': '⚡',
+            'action.http': '📡',
+            'action.code': '💻',
+            'action.email': '📧',
+            'action.file': '📁',
+            'logic.if': '🔀',
+            'logic.switch': '🔃',
+            'logic.loop': '🔁',
+            'logic.wait': '⏳',
+            'ai.claude': '🤖',
+            'ai.llm': '🧠'
+        };
+
+        // Node categories
+        const nodeCategories = {
+            'trigger': 'trigger',
+            'action': 'action',
+            'logic': 'logic',
+            'ai': 'ai'
+        };
+
+        // Drag and drop from sidebar
+        document.querySelectorAll('.node-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                draggedNodeType = e.target.dataset.type;
+                draggedNodeName = e.target.dataset.name;
+            });
+        });
+
+        canvas.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (draggedNodeType) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                addNode(draggedNodeType, draggedNodeName, x, y);
+                draggedNodeType = null;
+                draggedNodeName = null;
+            }
+        });
+
+        function addNode(type, name, x, y) {
+            const id = 'node-' + Date.now();
+            const node = { id, type, name, x, y };
+            nodes.push(node);
+            renderNode(node);
+            updateEmptyState();
+            vscode.postMessage({ type: 'addNode', node });
+        }
+
+        function renderNode(node) {
+            const category = node.type.split('.')[0];
+            const icon = nodeIcons[node.type] || '⚪';
+
+            const nodeEl = document.createElement('div');
+            nodeEl.className = `node ${category}`;
+            nodeEl.dataset.id = node.id;
+            nodeEl.style.left = node.x + 'px';
+            nodeEl.style.top = node.y + 'px';
+
+            nodeEl.innerHTML = `
+                <div class="node-header">
+                    <span class="node-icon">${icon}</span>
+                    <span class="node-name">${node.name}</span>
+                </div>
+                <div class="node-type">${node.type}</div>
+                <div class="node-ports">
+                    <div class="port input" data-port="input"></div>
+                    <div class="port output" data-port="output"></div>
+                </div>
+            `;
+
+            // Dragging
+            nodeEl.addEventListener('mousedown', (e) => {
+                if (e.target.classList.contains('port')) return;
+                selectNode(node.id);
+
+                let startX = e.clientX;
+                let startY = e.clientY;
+                let nodeX = node.x;
+                let nodeY = node.y;
+
+                const onMouseMove = (e) => {
+                    const dx = e.clientX - startX;
+                    const dy = e.clientY - startY;
+                    node.x = nodeX + dx;
+                    node.y = nodeY + dy;
+                    nodeEl.style.left = node.x + 'px';
+                    nodeEl.style.top = node.y + 'px';
+                };
+
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    vscode.postMessage({ type: 'updateNode', node });
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            canvas.appendChild(nodeEl);
+        }
+
+        function selectNode(nodeId) {
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('selected'));
+            selectedNode = nodeId;
+
+            const nodeEl = document.querySelector(`.node[data-id="${nodeId}"]`);
+            if (nodeEl) {
+                nodeEl.classList.add('selected');
+                const node = nodes.find(n => n.id === nodeId);
+                if (node) {
+                    showProperties(node);
+                }
+            }
+        }
+
+        function showProperties(node) {
+            propertiesPanel.style.display = 'block';
+            nodeNameInput.value = node.name;
+            nodeTypeInput.value = node.type;
+
+            nodeNameInput.onchange = () => {
+                node.name = nodeNameInput.value;
+                const nodeEl = document.querySelector(`.node[data-id="${node.id}"]`);
+                if (nodeEl) {
+                    nodeEl.querySelector('.node-name').textContent = node.name;
+                }
+                vscode.postMessage({ type: 'updateNode', node });
+            };
+        }
+
+        function updateEmptyState() {
+            emptyState.style.display = nodes.length > 0 ? 'none' : 'block';
+        }
+
+        // Toolbar buttons
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            vscode.postMessage({ type: 'save' });
+            document.getElementById('statusText').textContent = 'Saved!';
+            setTimeout(() => {
+                document.getElementById('statusText').textContent = 'Ready';
+            }, 2000);
+        });
+
+        document.getElementById('runBtn').addEventListener('click', () => {
+            vscode.postMessage({ type: 'run' });
+            document.getElementById('statusText').textContent = 'Running...';
+        });
+
+        // Listen for messages from extension
+        window.addEventListener('message', (event) => {
+            const message = event.data;
+
+            if (message.type === 'loadWorkflow') {
+                nodes = message.nodes || [];
+                canvas.querySelectorAll('.node').forEach(n => n.remove());
+                nodes.forEach(node => renderNode(node));
+                updateEmptyState();
+            }
+        });
+
+        // Initial empty state
+        updateEmptyState();
+    </script>
+</body>
+</html>
